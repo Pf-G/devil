@@ -8,12 +8,18 @@ function trim() {
     fi
 }
 
-function add_column {
+export TABLE_CONTENT=""
+
+function table_column {
     local content=""
     for arg in $@; do
         content="$content | $arg"
     done
-    echo -e "$content |"
+    TABLE_CONTENT="${TABLE_CONTENT}\n$content | "
+}
+
+function table_print(){
+    echo -e $TABLE_CONTENT |  column -t
 }
 
 function get_timestamp(){
@@ -27,4 +33,3 @@ function ini_get(){
     sed -n "/\[$2\]/,/\[/p" $1 | grep -v "\[" | grep $3 | awk -F '=' '{print $2}' | trim " "
 }
 
-ini_get $1 $2 $3
