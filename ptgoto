@@ -1,0 +1,53 @@
+#!/bin/bash
+
+source $(dirname $0)/ColorEcho.zsh
+source $(dirname $0)/deps/commmon.sh
+
+export LC_CTYPE=en_US
+
+MODULE_NAME=$(basename $(pwd))
+
+DEPLOY_INI=$(dirname $0)/conf/deploy.ini 
+
+DESTINATION=$1  # 入参：目标机器名
+COMMAND=$2      # 入参：登录机器后要执行的命令
+
+
+function _show_usage(){
+    local sections=$(grep -oE "(\[.*?\])" $DEPLOY_INI | grep -v global | sed 's:^\[::; s:\]$::;')
+    add_column ------- ---------
+    add_column 目标 说明
+    add_column ------- ---------
+    for section in $sections; do
+        local desc=$(config $DEPLOY_INI $section desc)
+        add_column $section $desc
+    done
+    add_column ------- ---------
+}
+
+
+while [ -z "$DESTINATION" ]; do
+    cat $(dirname $0)/assets/usage_ptgoto
+    _show_usage | column -t 
+   printf "请输入目标名称:"
+   read DESTINATION
+    if ! grep "\[$DESTINATION\]" $DEPLOY_INI > /dev/null; then
+        DESTINATION=""
+    fi
+done
+
+
+METHINE=$(config $DEPLOY_INI $DESTINATION machine)                                      # 获取机器IP
+PASSWORD=$(config $DEPLOY_INI $DESTINATION password)                                    # 获取机器密码
+IS_RELAY=$(config $DEPLOY_INI $DESTINATION relay)                                       # 是否需要relay授权
+COMMAND=$METHINE                                                                        
+EXEC_COMMAND=$(config $DEPLOY_INI $DESTINATION command)                                 # 登录目标机器后执行的指令
+RELAY_METHINE=$(config $DEPLOY_INI $DESTINATION relay_methine)                          # 目标中控机
+
+if [ "true" == "$IS_RELAY" ]; then
+    $(dirname $0)/expect.script "$COMMAND" "$EXEC_COMMAND" "${RELAY_METHINE:-relay}"
+    exit;
+fi
+
+sshpass -p $PASSWORD ssh $METHINE
+
